@@ -1,44 +1,30 @@
 import os
 import time
+import numpy as np
+import sounddevice as sd
+import soundfile as sf
+from pynput import keyboard
 import keyboard
 import openai
-import requests
-import numpy as np
-import pyaudio
 import speech_recognition as sr
 
 # Задайте ваш ключ API від OpenAI як змінну середовища
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Параметри для запису аудіо
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
 RATE = 16000
-CHUNK = 1024
 
 def record_audio():
-    p = pyaudio.PyAudio()
-    stream = p.open(format=FORMAT,
-                    channels=CHANNELS,
-                    rate=RATE,
-                    input=True,
-                    frames_per_buffer=CHUNK)
-
     frames = []
-    print("Recording... (Press Space to stop)")
 
-    while True:
-        if keyboard.is_pressed(' '):
-            break
-        data = stream.read(CHUNK)
-        frames.append(np.frombuffer(data, dtype=np.int16))
+    def callback(indata, frames, time, status):
+        frames.append(indata.copy())
+
+    with sd.InputStream(callback=callback, channels=1, dtype=np.int16):
+        print("Recording... (Press Space to stop)")
+        keyboard.wait('space')  # Чекаємо натискання пробілу для завершення запису
 
     print("Recording stopped.")
-    
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
-
     return np.concatenate(frames, axis=0)
 
 def transcribe_audio(audio_data):
